@@ -175,14 +175,21 @@ export function useWeb3() {
         setNetworkId(parseInt(chainId));
       };
       
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-      
-      return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-      };
+      const ethereum = window.ethereum;
+      if (ethereum) {
+        ethereum.on('accountsChanged', handleAccountsChanged);
+        ethereum.on('chainChanged', handleChainChanged);
+        
+        return () => {
+          if (ethereum) {
+            ethereum.removeListener('accountsChanged', handleAccountsChanged);
+            ethereum.removeListener('chainChanged', handleChainChanged);
+          }
+        };
+      }
     }
+    
+    return () => {};
   }, []);
 
   return {

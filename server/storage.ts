@@ -144,6 +144,88 @@ export class MemStorage implements IStorage {
       departureDate: new Date(Date.now() + 86400000), // tomorrow
       price: 750
     });
+    
+    // Create a sample shipment and tracking events for demo purposes
+    this.initializeDemoShipment();
+  }
+  
+  // Helper method to create a demo shipment with tracking events
+  private async initializeDemoShipment() {
+    try {
+      // Create a shipment
+      const demoShipment = await this.createShipment({
+        logisticsSpaceId: 1,
+        userId: 1, // Regular user
+        goodsType: "Electronics",
+        weight: 750,
+        length: 2,
+        width: 1.5,
+        height: 1.8,
+        additionalServices: ["insurance", "express"]
+      });
+      
+      // Create a transaction for this shipment
+      const demoTransaction = await this.createTransaction({
+        shipmentId: demoShipment.id,
+        amount: 1380.50,
+        currency: "USD",
+        paymentMethod: "metamask",
+        paymentDetails: { walletAddress: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F" }
+      });
+      
+      // Update transaction status to confirmed
+      await this.updateTransactionStatus(
+        demoTransaction.id, 
+        "confirmed", 
+        "0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+      );
+      
+      // Update shipment status to confirmed and link transaction
+      const updatedShipment = await this.getShipment(demoShipment.id);
+      if (updatedShipment) {
+        updatedShipment.status = "confirmed";
+        updatedShipment.transactionId = demoTransaction.id;
+        this.shipments.set(updatedShipment.id, updatedShipment);
+      }
+      
+      // Add some tracking events
+      const shipmentId = demoShipment.id;
+      const now = new Date();
+      
+      // Shipment order confirmed event
+      await this.createTrackingEvent({
+        shipmentId,
+        eventType: "order_confirmed",
+        timestamp: new Date(now.getTime() - 86400000), // 1 day ago
+        location: "New York, NY",
+        details: "Order has been confirmed and payment received."
+      });
+      
+      // Package received event
+      await this.createTrackingEvent({
+        shipmentId,
+        eventType: "package_received",
+        timestamp: new Date(now.getTime() - 72000000), // 20 hours ago
+        location: "New York Distribution Center, NY",
+        details: "Package has been received at our distribution center."
+      });
+      
+      // In transit event
+      await this.createTrackingEvent({
+        shipmentId,
+        eventType: "in_transit",
+        timestamp: new Date(now.getTime() - 43200000), // 12 hours ago
+        location: "Interstate I-80 W, PA",
+        details: "Shipment is in transit to destination."
+      });
+      
+      // Update shipment status to in_transit
+      await this.updateShipmentStatus(shipmentId, "in_transit");
+      
+      console.log("Demo shipment and tracking events created successfully");
+    } catch (error) {
+      console.error("Error creating demo shipment:", error);
+    }
   }
 
   // User operations
