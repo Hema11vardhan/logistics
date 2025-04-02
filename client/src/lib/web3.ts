@@ -55,9 +55,15 @@ const mockWeb3 = {
   },
   // Function to create a space token
   async createSpaceToken(spaceData: any): Promise<string | null> {
-    console.log('Creating space token with data:', spaceData);
-    // Mock token creation for now
-    return `T-0x${Math.random().toString(16).substring(2, 10).toUpperCase()}`;
+    try {
+      console.log('Creating space token with data:', spaceData);
+      // Mock token creation for now
+      const tokenId = `T-0x${Math.random().toString(16).substring(2, 10).toUpperCase()}`;
+      return tokenId;
+    } catch (error) {
+      console.error('Error creating token:', error);
+      return null;
+    }
   }
 };
 

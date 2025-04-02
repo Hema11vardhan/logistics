@@ -68,7 +68,7 @@ export default function SpaceVisualizer() {
         maxWeight: parseInt(maxWeight),
         vehicleType: "18-Wheeler Truck",
         status: "available",
-        departureDate: new Date(Date.now() + 86400000), // tomorrow
+        departureDate: new Date(Date.now() + 86400000).toISOString(), // tomorrow as ISO string
         price: parseFloat(maxWeight) * 0.05 // Simple price calculation based on max weight
       });
       
