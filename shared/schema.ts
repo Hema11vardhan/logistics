@@ -43,10 +43,20 @@ export const logisticsSpaces = pgTable("logistics_spaces", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertLogisticsSpaceSchema = createInsertSchema(logisticsSpaces).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertLogisticsSpaceSchema = createInsertSchema(logisticsSpaces)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    // Ensure departureDate can be either a Date object or an ISO string
+    departureDate: z.string().or(z.date()).transform((val) => {
+      if (typeof val === 'string') {
+        return new Date(val);
+      }
+      return val;
+    }),
+  });
 
 // SHIPMENT SCHEMAS
 export const shipments = pgTable("shipments", {

@@ -1,6 +1,17 @@
 // This file handles blockchain integration with Web3.js
 import { useCallback, useEffect, useState } from 'react';
 
+// Add type declaration for ethereum in window
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: any) => Promise<any>;
+      on: (event: string, callback: any) => void;
+      removeListener: (event: string, callback: any) => void;
+    };
+  }
+}
+
 // Mock Web3 for now, to be replaced with actual web3 implementation
 const mockWeb3 = {
   isConnected: false,
