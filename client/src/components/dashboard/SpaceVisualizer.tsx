@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useWeb3 } from "@/lib/web3";
 import { useToast } from "@/hooks/use-toast";
 import ThreeJsContainer from "./ThreeJsContainer";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function SpaceVisualizer() {
@@ -71,6 +71,9 @@ export default function SpaceVisualizer() {
         departureDate: new Date(Date.now() + 86400000).toISOString(), // tomorrow as ISO string
         price: parseFloat(maxWeight) * 0.05 // Simple price calculation based on max weight
       });
+      
+      // Invalidate spaces query to refresh the TokenizedSpaces component
+      queryClient.invalidateQueries({ queryKey: [`/api/spaces?userId=${user.id}`] });
       
       toast({
         title: "Space Tokenized",

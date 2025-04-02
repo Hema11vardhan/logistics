@@ -8,6 +8,8 @@ import Chatbot from "@/components/common/Chatbot";
 import SpaceVisualizer from "@/components/dashboard/SpaceVisualizer";
 import TokenizedSpaces from "@/components/dashboard/TokenizedSpaces";
 import BlockchainStatus from "@/components/dashboard/BlockchainStatus";
+import VehicleManagement from "@/components/logistics/VehicleManagement";
+import ShipmentManagement from "@/components/logistics/ShipmentManagement";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
@@ -29,7 +31,7 @@ export default function LogisticsDashboard() {
   }, [user, navigate]);
 
   // Query for user's spaces
-  const { data: spaces } = useQuery({
+  const { data: spaces } = useQuery<any[]>({
     queryKey: [user ? `/api/spaces?userId=${user.id}` : null],
     enabled: !!user,
   });
@@ -211,24 +213,14 @@ export default function LogisticsDashboard() {
             {section === "vehicles" && (
               <>
                 <h1 className="text-2xl font-semibold text-gray-900 mb-6">Vehicles</h1>
-                {/* Vehicles content would go here */}
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-gray-500">Vehicle management options will be displayed here.</p>
-                  </CardContent>
-                </Card>
+                <VehicleManagement />
               </>
             )}
             
             {section === "shipments" && (
               <>
                 <h1 className="text-2xl font-semibold text-gray-900 mb-6">Shipments</h1>
-                {/* Shipments content would go here */}
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-gray-500">Shipment management options will be displayed here.</p>
-                  </CardContent>
-                </Card>
+                <ShipmentManagement />
               </>
             )}
             

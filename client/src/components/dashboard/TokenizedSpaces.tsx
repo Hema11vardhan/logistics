@@ -1,20 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { LogisticsSpace } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { RefreshCw } from "lucide-react";
 
 export default function TokenizedSpaces() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
-  const { data: spaces, isLoading, error } = useQuery<LogisticsSpace[]>({
+  const { 
+    data: spaces, 
+    isLoading, 
+    error,
+    refetch
+  } = useQuery<LogisticsSpace[]>({
     queryKey: [user ? `/api/spaces?userId=${user.id}` : "/api/spaces"],
     enabled: !!user,
+    refetchInterval: 5000, // Refetch every 5 seconds to ensure new tokenized spaces appear
   });
   
   useEffect(() => {
@@ -26,6 +34,15 @@ export default function TokenizedSpaces() {
       });
     }
   }, [error, toast]);
+  
+  // Function to handle manual refresh
+  const handleRefresh = () => {
+    refetch();
+    toast({
+      title: "Refreshing spaces",
+      description: "Fetching the latest tokenized spaces from the blockchain.",
+    });
+  };
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -43,7 +60,19 @@ export default function TokenizedSpaces() {
   return (
     <Card className="bg-white rounded-lg shadow overflow-hidden mb-8">
       <CardContent className="p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Tokenized Spaces</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium text-gray-900">Tokenized Spaces</h2>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={isLoading}
+            className="flex items-center"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
         <p className="text-gray-600 mb-6">
           Your logistics spaces that have been converted to blockchain tokens.
         </p>
