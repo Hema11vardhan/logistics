@@ -373,10 +373,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Blockchain transaction hash is required" });
       }
       
+      console.log(`Confirming transaction ${id} with hash ${blockchainTxHash}`);
+      
       const transaction = await storage.updateTransactionStatus(id, "completed", blockchainTxHash);
       
       if (!transaction) {
         return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      // Update shipment status to in-transit
+      const shipment = await storage.getShipment(transaction.shipmentId);
+      if (shipment) {
+        await storage.updateShipmentStatus(shipment.id, "in-transit");
+        
+        // Get logistics space to access source location
+        const space = await storage.getLogisticsSpace(shipment.logisticsSpaceId);
+        
+        // Add tracking event
+        await storage.createTrackingEvent({
+          shipmentId: shipment.id,
+          eventType: "payment",
+          timestamp: new Date(),
+          status: "confirmed",
+          message: "Payment confirmed via blockchain",
+          details: `Transaction hash: ${blockchainTxHash}`,
+          location: space ? space.source : "Unknown location",
+          latitude: null,
+          longitude: null
+        });
       }
       
       return res.status(200).json(transaction);

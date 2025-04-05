@@ -63,18 +63,19 @@ export default function PaymentGateway({ customizationData, space, onPaymentComp
       }
 
       // Create shipment in the backend
-      const shipmentResponse = await apiRequest("POST", "/api/shipments", {
-        logisticsSpaceId: customizationData.spaceId,
-        userId: user.id,
-        goodsType: customizationData.contentType,
-        weight: customizationData.weight,
-        length: customizationData.length,
-        width: customizationData.width,
-        height: customizationData.height,
-        additionalServices: customizationData.additionalServices
+      const shipmentData = await apiRequest("/api/shipments", {
+        method: "POST",
+        data: {
+          logisticsSpaceId: customizationData.spaceId,
+          userId: user.id,
+          goodsType: customizationData.contentType,
+          weight: customizationData.weight,
+          length: customizationData.length,
+          width: customizationData.width,
+          height: customizationData.height,
+          additionalServices: customizationData.additionalServices
+        }
       });
-
-      const shipmentData = await shipmentResponse.json();
 
       // Process payment
       let txHash = null;
@@ -83,10 +84,11 @@ export default function PaymentGateway({ customizationData, space, onPaymentComp
         txHash = await sendTransaction({
           to: "0x7F3A9E2D5Ef6B63A3c65d6fE7fAfB34B9E5F1b3C", // Smart contract address
           value: customizationData.totalCost,
-          data: JSON.stringify({
+          // Don't stringify, pass as an object
+          data: {
             tokenId: customizationData.tokenId,
             shipmentId: shipmentData.id
-          })
+          }
         });
 
         if (!txHash) {
@@ -95,22 +97,26 @@ export default function PaymentGateway({ customizationData, space, onPaymentComp
       }
 
       // Create transaction record in the backend
-      const transactionResponse = await apiRequest("POST", "/api/transactions", {
-        shipmentId: shipmentData.id,
-        amount: customizationData.totalCost,
-        currency: paymentMethod === "metamask" ? token : "USD",
-        paymentMethod: paymentMethod,
-        paymentDetails: paymentMethod === "metamask" 
-          ? { walletAddress: account } 
-          : { upiId: upiId }
+      const transactionData = await apiRequest("/api/transactions", {
+        method: "POST",
+        data: {
+          shipmentId: shipmentData.id,
+          amount: customizationData.totalCost,
+          currency: paymentMethod === "metamask" ? token : "USD",
+          paymentMethod: paymentMethod,
+          paymentDetails: paymentMethod === "metamask" 
+            ? { walletAddress: account } 
+            : { upiId: upiId }
+        }
       });
-
-      const transactionData = await transactionResponse.json();
 
       // If blockchain transaction was successful, confirm it in our backend
       if (txHash) {
-        await apiRequest("PATCH", `/api/transactions/${transactionData.id}/confirm`, {
-          blockchainTxHash: txHash
+        await apiRequest(`/api/transactions/${transactionData.id}/confirm`, {
+          method: "PATCH",
+          data: {
+            blockchainTxHash: txHash
+          }
         });
       }
 
