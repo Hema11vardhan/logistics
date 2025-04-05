@@ -139,22 +139,22 @@ export default function Sidebar({ className, isOpen, onToggle }: SidebarProps) {
             const isActive = location === link.href || (link.href !== baseRoute && location.startsWith(link.href));
             
             return (
-              <Link key={link.href} href={link.href}>
-                <a
-                  className={cn(
-                    "group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors",
-                    isActive
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                  )}
-                  onClick={isMobile ? handleToggle : undefined}
-                >
-                  <Icon className={cn(
-                    "mr-4 h-6 w-6",
-                    isActive ? "text-purple-400" : "text-gray-400 group-hover:text-gray-300"
-                  )} />
-                  {link.label}
-                </a>
+              <Link 
+                key={link.href} 
+                href={link.href}
+                onClick={isMobile ? handleToggle : undefined}
+                className={cn(
+                  "group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors",
+                  isActive
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                )}
+              >
+                <Icon className={cn(
+                  "mr-4 h-6 w-6",
+                  isActive ? "text-purple-400" : "text-gray-400 group-hover:text-gray-300"
+                )} />
+                {link.label}
               </Link>
             );
           })}

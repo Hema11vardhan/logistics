@@ -8,6 +8,30 @@ import UserDashboard from "@/pages/UserDashboard";
 import LogisticsDashboard from "@/pages/LogisticsDashboard";
 import DeveloperDashboard from "@/pages/DeveloperDashboard";
 import { AuthProvider } from "@/hooks/useAuth";
+import { useEffect } from "react";
+import { handleRedirectResult } from "@/lib/firebase";
+
+// Component to handle auth redirects
+function AuthRedirectHandler({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Handle Firebase auth redirects
+    const checkRedirectResult = async () => {
+      try {
+        const result = await handleRedirectResult();
+        if (result.success && result.user) {
+          console.log("Redirect result processed successfully:", result.user.email);
+          // Auth provider will handle the rest
+        }
+      } catch (error) {
+        console.error("Error handling redirect:", error);
+      }
+    };
+    
+    checkRedirectResult();
+  }, []);
+  
+  return <>{children}</>;
+}
 
 function Router() {
   return (
@@ -34,8 +58,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <AuthRedirectHandler>
+          <Router />
+          <Toaster />
+        </AuthRedirectHandler>
       </AuthProvider>
     </QueryClientProvider>
   );

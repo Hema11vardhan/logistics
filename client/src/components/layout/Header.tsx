@@ -39,10 +39,10 @@ export default function Header({ minimal = false }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center">
           <Link href={isAuthenticated ? getDashboardRoute() : "/"}>
-            <a className="flex items-center">
+            <div className="flex items-center cursor-pointer">
               <Package className="h-8 w-8 text-[#8B5CF6]" />
               <h1 className="ml-2 text-xl font-bold text-gray-900">BlockLogistics</h1>
-            </a>
+            </div>
           </Link>
         </div>
         
@@ -74,13 +74,17 @@ export default function Header({ minimal = false }: HeaderProps) {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => window.location.href = getDashboardRoute()}>
-                  Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => window.location.href = `${getDashboardRoute()}/profile`}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
+                <Link href={getDashboardRoute()}>
+                  <DropdownMenuItem>
+                    Dashboard
+                  </DropdownMenuItem>
+                </Link>
+                <Link href={`${getDashboardRoute()}/profile`}>
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                </Link>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setTheme(theme === "dark" ? "light" : "dark")}>
                   {theme === "dark" ? (

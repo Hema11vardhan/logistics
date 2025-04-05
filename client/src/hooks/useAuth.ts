@@ -122,6 +122,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Use Firebase Google authentication
       const result = await signInWithGoogle();
       
+      // If this is a redirect on mobile, we'll return quickly as the actual auth will happen on redirect return
+      if (result.redirected) {
+        setLoading(false);
+        // Toast to inform the user they're being redirected
+        toast({
+          title: "Google Login",
+          description: "Redirecting to Google for authentication...",
+          variant: "default"
+        });
+        return false;
+      }
+      
       if (!result.success || !result.user?.email) {
         throw new Error(result.error || 'Failed to authenticate with Google');
       }
