@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useWeb3 } from "@/lib/web3";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import Chatbot from "@/components/common/Chatbot";
@@ -59,8 +60,13 @@ export default function UserDashboard() {
   });
 
   // Query for user's shipments count
-  const { data: shipments, isLoading: shipmentsLoading } = useQuery<any[]>({
-    queryKey: [user ? `/api/shipments?userId=${user.id}` : null],
+  const { data: shipments, isLoading: shipmentsLoading, refetch: refetchShipments } = useQuery<any[]>({
+    queryKey: ['/api/shipments', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const data = await apiRequest(`/api/shipments?userId=${user.id}`);
+      return data;
+    },
     enabled: !!user,
   });
   

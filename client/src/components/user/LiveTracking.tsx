@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Truck, Package, AlertCircle, MapPin, ChevronRight, RefreshCw, Map } from "lucide-react";
 import { TrackingEvent, Shipment } from "@shared/schema";
 import LocationMap from "../maps/LocationMap";
@@ -26,8 +27,13 @@ export default function LiveTracking({ shipmentId }: LiveTrackingProps) {
   const [activeTab, setActiveTab] = useState<string>("map");
 
   // Fetch user's shipments
-  const { data: shipments, isLoading: shipmentsLoading } = useQuery<ShipmentWithDetails[]>({
-    queryKey: [user ? `/api/shipments?userId=${user.id}` : null],
+  const { data: shipments, isLoading: shipmentsLoading, refetch: refetchShipments } = useQuery<ShipmentWithDetails[]>({
+    queryKey: ['/api/shipments', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const data = await apiRequest(`/api/shipments?userId=${user.id}`);
+      return data;
+    },
     enabled: !!user && !shipmentId,
   });
 
