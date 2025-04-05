@@ -17,16 +17,34 @@ function AuthRedirectHandler({ children }: { children: React.ReactNode }) {
     // Handle Firebase auth redirects
     const checkRedirectResult = async () => {
       try {
+        console.log("Checking for auth redirects...");
         const result = await handleRedirectResult();
+        
         if (result.success && result.user) {
           console.log("Redirect result processed successfully:", result.user.email);
-          // Auth provider will handle the rest
+          
+          // Log detailed info to help debug
+          console.log("Auth redirect details:", {
+            email: result.user.email,
+            displayName: result.user.displayName,
+            uid: result.user.uid,
+            hasToken: !!result.token
+          });
+          
+          // Now we need to check if this user exists in our system
+          // The actual login logic is handled in the useAuth hook's useEffect
+          // which will be triggered when the redirect completes.
+          
+          // No need to do anything here as the AuthProvider will handle the rest
+        } else if (!result.success) {
+          console.log("No redirect result or auth in progress:", result.error);
         }
       } catch (error) {
         console.error("Error handling redirect:", error);
       }
     };
     
+    // Check for redirects immediately when component mounts
     checkRedirectResult();
   }, []);
   

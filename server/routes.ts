@@ -16,15 +16,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { username, password, walletAddress } = req.body;
+      const { username, password, walletAddress, walletSignature, signedMessage, email } = req.body;
       
       let user;
       
       if (walletAddress) {
         // Login with wallet
+        console.log(`Attempting login with wallet address: ${walletAddress}`);
         user = await storage.getUserByWalletAddress(walletAddress);
         if (!user) {
           return res.status(401).json({ message: "Invalid wallet address" });
+        }
+        
+        // In production, verify the signature here
+        if (walletSignature && signedMessage) {
+          console.log("Wallet signature provided for verification");
+          // Signature verification would happen here
+        }
+      } else if (email) {
+        // Login with OAuth (Google, etc.)
+        console.log(`Attempting login with email: ${email} (OAuth)`);
+        user = await storage.getUserByEmail(email);
+        if (!user) {
+          return res.status(401).json({ 
+            message: "User not found with this email",
+            detail: "This email is not registered. Please sign up first."
+          });
         }
       } else {
         // Login with username/password
@@ -32,6 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Username and password are required" });
         }
         
+        console.log(`Attempting login with username: ${username}`);
         user = await storage.getUserByUsername(username);
         if (!user || user.password !== password) {
           return res.status(401).json({ message: "Invalid username or password" });
@@ -58,6 +76,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userData = insertUserSchema.parse(req.body);
       
+      console.log("Register attempt with data:", {
+        username: userData.username,
+        email: userData.email,
+        hasWallet: !!userData.walletAddress,
+        role: userData.role
+      });
+      
       // Check if user already exists
       const existingUserByUsername = await storage.getUserByUsername(userData.username);
       if (existingUserByUsername) {
@@ -74,9 +99,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (existingUserByWallet) {
           return res.status(400).json({ message: "Wallet address already registered" });
         }
+        
+        console.log(`Registering new wallet address: ${userData.walletAddress}`);
       }
       
+      // Create user and log success
       const user = await storage.createUser(userData);
+      console.log(`User registered successfully: ID=${user.id}, Role=${user.role}`);
       
       return res.status(201).json({ 
         id: user.id,

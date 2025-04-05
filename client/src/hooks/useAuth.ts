@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useWeb3 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithGoogle, handleRedirectResult } from '@/lib/firebase';
+import { signInWithGoogle, handleRedirectResult, subscribeToAuthChanges } from '@/lib/firebase';
 
 interface User {
   id: number;
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const { connectWallet, account } = useWeb3();
 
-  // Check if user is already logged in on mount
+  // Check if user is already logged in on mount and listen for Firebase auth changes
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -74,7 +74,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    // Check local storage first
     checkAuth();
+    
+    // Subscribe to Firebase auth state changes
+    const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
+      console.log("Firebase auth state changed:", firebaseUser?.email || "logged out");
+      
+      if (firebaseUser && firebaseUser.email) {
+        try {
+          // If we got a Firebase user but no local user, try to log them in
+          if (!user) {
+            console.log("Firebase user detected, attempting login with email:", firebaseUser.email);
+            
+            try {
+              // Try to authenticate the user on our system
+              const response = await apiRequest('POST', '/api/auth/login', { 
+                email: firebaseUser.email 
+              });
+              const userData = await response.json();
+              
+              console.log("Successfully logged in user after Firebase auth state change");
+              
+              // Update state and local storage
+              setUser(userData);
+              localStorage.setItem('user', JSON.stringify(userData));
+              
+              // No need to navigate - this could happen after redirect and we don't want
+              // to interrupt an ongoing flow
+            } catch (err) {
+              // User not found in our system
+              console.log("Firebase user not found in our system after auth state change");
+            }
+          }
+        } catch (err) {
+          console.error("Error handling Firebase auth state change:", err);
+        }
+      }
+    });
+    
+    // Unsubscribe from Firebase on component unmount
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Login with username/password
@@ -119,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
+      console.log("Starting Google authentication process");
       // Use Firebase Google authentication
       const result = await signInWithGoogle();
       
@@ -131,20 +174,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "Redirecting to Google for authentication...",
           variant: "default"
         });
+        console.log("Redirecting to Google authentication...");
         return false;
       }
       
       if (!result.success || !result.user?.email) {
+        console.error("Google login failed:", result.error);
         throw new Error(result.error || 'Failed to authenticate with Google');
       }
+      
+      console.log("Google authentication successful, checking if user exists in our system");
       
       try {
         // Check if user exists with this email
         const response = await apiRequest('POST', '/api/auth/login', { email: result.user.email });
         const userData = await response.json();
         
+        console.log("User found in our system:", userData.username);
+        
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
+        
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${userData.firstName || userData.username}!`,
+          variant: "default"
+        });
         
         // Redirect to appropriate dashboard based on role
         if (userData.role === 'user') {
@@ -155,27 +210,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           navigate('/developer-dashboard');
         }
         
-        toast({
-          title: "Google Login Successful",
-          description: `Welcome back, ${userData.firstName || userData.username}!`,
-          variant: "default"
-        });
-        
         return true;
       } catch (loginErr) {
-        // User not found, ask if they want to register
-        toast({
-          title: "Account not found",
-          description: "Please register first with this Google account.",
-          variant: "default"
-        });
+        console.log("User not found in our system with this Google account. Offering auto-registration.");
         
-        // Pre-fill registration form with Google data
-        // For now, we'll just redirect to registration page
-        navigate('/login?tab=signup&email=' + encodeURIComponent(result.user.email || '') + 
-                 '&name=' + encodeURIComponent(result.user.displayName || ''));
+        // Ask if they want to register with a specific role
+        const confirmRegistration = window.confirm(
+          "No account found with this Google email. Would you like to create a new account?"
+        );
         
-        return false;
+        if (confirmRegistration) {
+          // Ask for role selection
+          const userRole = window.prompt(
+            "Please choose a role for your account (user, logistics, developer):",
+            "user"
+          );
+          
+          if (!userRole) {
+            throw new Error('User canceled role selection');
+          }
+          
+          // Validate role
+          const validatedRole = ['user', 'logistics', 'developer'].includes(userRole.toLowerCase()) 
+            ? userRole.toLowerCase() as 'user' | 'logistics' | 'developer'
+            : 'user'; // Default to user if invalid entry
+          
+          // Extract name parts - handle if displayName is undefined
+          const nameParts = (result.user.displayName || '').split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+          
+          // Generate a username from the email (remove special chars)
+          const username = (result.user.email.split('@')[0] || 'user')
+            .replace(/[^a-zA-Z0-9]/g, '');
+          
+          console.log(`Auto-registering Google user with role: ${validatedRole}`);
+          
+          // Register new user
+          const registerData: RegisterData = {
+            username,
+            email: result.user.email,
+            password: `google_${Date.now()}`, // Generate a random password
+            firstName,
+            lastName,
+            role: validatedRole,
+          };
+          
+          const registerResult = await register(registerData);
+          
+          if (registerResult) {
+            toast({
+              title: "Registration Successful",
+              description: `Your account has been created with the ${validatedRole} role.`,
+              variant: "default"
+            });
+          }
+          
+          return registerResult;
+        } else {
+          // User doesn't want to auto-register, redirect to sign-up page with pre-filled data
+          toast({
+            title: "Registration required",
+            description: "Please register with your Google account to continue.",
+            variant: "default"
+          });
+          
+          // Pre-fill registration form with Google data
+          navigate('/login?tab=signup&email=' + encodeURIComponent(result.user.email || '') + 
+                  '&name=' + encodeURIComponent(result.user.displayName || ''));
+          
+          return false;
+        }
       }
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to login with Google';
@@ -257,16 +362,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         return true;
       } catch (loginErr) {
-        toast({
-          title: "Wallet not registered",
-          description: "This wallet is not registered. Please sign up first.",
-          variant: "default"
-        });
+        // Handle wallet not registered case - offer quick registration
+        const autoRegister = window.confirm(
+          "This wallet is not registered. Would you like to register now with this MetaMask wallet?"
+        );
         
-        // Pre-fill registration form with wallet address
-        navigate('/login?tab=signup&walletAddress=' + encodeURIComponent(walletAddress));
-        
-        return false;
+        if (autoRegister) {
+          try {
+            // Generate a username from the wallet address
+            const shortWallet = walletAddress.substring(0, 6) + '...' + walletAddress.substring(walletAddress.length - 4);
+            const username = `user_${shortWallet}`;
+            const email = `${shortWallet}@blocklogistics.example`;
+            
+            // Auto-register this wallet
+            const registerData: RegisterData = {
+              username,
+              email,
+              password: Date.now().toString(), // Random password for auto-registration
+              role: 'user', // Default role
+              walletAddress
+            };
+            
+            const registerResult = await register(registerData);
+            
+            if (registerResult) {
+              toast({
+                title: "Wallet registered successfully",
+                description: "Your wallet has been registered and you are now logged in.",
+                variant: "default"
+              });
+              return true;
+            } else {
+              throw new Error("Auto-registration failed");
+            }
+          } catch (registerErr) {
+            toast({
+              title: "Registration failed",
+              description: "There was an error registering your wallet. Please try the manual registration.",
+              variant: "destructive"
+            });
+            
+            // Pre-fill registration form with wallet address
+            navigate('/login?tab=signup&walletAddress=' + encodeURIComponent(walletAddress));
+            return false;
+          }
+        } else {
+          // If user doesn't want to auto-register, redirect to manual signup
+          toast({
+            title: "Wallet not registered",
+            description: "This wallet is not registered. Please sign up first.",
+            variant: "default"
+          });
+          
+          // Pre-fill registration form with wallet address
+          navigate('/login?tab=signup&walletAddress=' + encodeURIComponent(walletAddress));
+          
+          return false;
+        }
       }
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to login with MetaMask';

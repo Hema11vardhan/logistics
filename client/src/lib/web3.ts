@@ -68,8 +68,27 @@ const mockWeb3 = {
   async createSpaceToken(spaceData: any): Promise<string | null> {
     try {
       console.log('Creating space token with data:', spaceData);
-      // Mock token creation for now
-      const tokenId = `T-0x${Math.random().toString(16).substring(2, 10).toUpperCase()}`;
+      
+      // Create a more deterministic token ID based on the space data
+      // This helps with consistency in token generation
+      const stringifiedData = JSON.stringify({
+        ...spaceData,
+        timestamp: new Date().toISOString().split('T')[0] // Use just the date part for consistency
+      });
+      
+      // Create a hash-like token ID based on the stringified data
+      let hash = 0;
+      for (let i = 0; i < stringifiedData.length; i++) {
+        const char = stringifiedData.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      
+      // Use absolute value and convert to hex, make sure it's at least 8 chars
+      const hexHash = Math.abs(hash).toString(16).padStart(8, '0').toUpperCase();
+      const tokenId = `T-0x${hexHash}`;
+      
+      console.log('Space tokenized successfully with ID:', tokenId);
       return tokenId;
     } catch (error) {
       console.error('Error creating token:', error);
