@@ -56,24 +56,30 @@ export default function SpaceVisualizer() {
         throw new Error("Failed to create blockchain token");
       }
       
+      // Convert maxWeight to a number before sending to the backend
+      const numericMaxWeight = parseInt(maxWeight);
+      
+      // Calculate price based on weight
+      const calculatedPrice = numericMaxWeight * 0.05;
+      
       // Save the space to our backend
-      await apiRequest('POST', '/api/spaces', {
+      await apiRequest("POST", "/api/spaces", {
         tokenId,
         userId: user.id,
         source,
         destination,
-        length,
-        width,
-        height,
-        maxWeight: parseInt(maxWeight),
+        length: Number(length),
+        width: Number(width),
+        height: Number(height),
+        maxWeight: numericMaxWeight,
         vehicleType: "18-Wheeler Truck",
         status: "available",
         departureDate: new Date(Date.now() + 86400000).toISOString(), // tomorrow as ISO string
-        price: parseFloat(maxWeight) * 0.05 // Simple price calculation based on max weight
+        price: calculatedPrice
       });
       
       // Invalidate spaces query to refresh the TokenizedSpaces component
-      queryClient.invalidateQueries({ queryKey: [`/api/spaces?userId=${user.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/spaces", user.id] });
       
       toast({
         title: "Space Tokenized",

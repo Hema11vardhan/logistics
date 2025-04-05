@@ -20,7 +20,7 @@ export default function TokenizedSpaces() {
     error,
     refetch
   } = useQuery<LogisticsSpace[]>({
-    queryKey: [user ? `/api/spaces?userId=${user.id}` : "/api/spaces"],
+    queryKey: ["/api/spaces", user?.id],
     enabled: !!user,
     refetchInterval: 5000, // Refetch every 5 seconds to ensure new tokenized spaces appear
   });
