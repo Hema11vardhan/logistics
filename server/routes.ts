@@ -170,23 +170,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/spaces", async (req: Request, res: Response) => {
     try {
-      const spaceData = insertLogisticsSpaceSchema.parse(req.body);
+      console.log("Creating logistics space with data:", JSON.stringify(req.body, null, 2));
       
-      // Check if token ID already exists
-      const existingSpace = await storage.getLogisticsSpaceByTokenId(spaceData.tokenId);
-      if (existingSpace) {
-        return res.status(400).json({ message: "Token ID already exists" });
+      // Validate the request data against the schema
+      try {
+        // Explicitly ensure all required fields are present and correctly typed
+        const { 
+          tokenId, userId, source, destination, 
+          length, width, height, maxWeight, 
+          vehicleType, status, departureDate, price 
+        } = req.body;
+        
+        if (!tokenId || typeof tokenId !== 'string') {
+          return res.status(400).json({ 
+            message: "Invalid or missing tokenId", 
+            details: { tokenId: "Must be a non-empty string" }
+          });
+        }
+        
+        if (!userId || typeof userId !== 'number') {
+          return res.status(400).json({ 
+            message: "Invalid or missing userId", 
+            details: { userId: "Must be a valid number" }
+          });
+        }
+        
+        // Check if token ID already exists
+        const existingSpace = await storage.getLogisticsSpaceByTokenId(tokenId);
+        if (existingSpace) {
+          console.log("Token ID already exists:", tokenId);
+          return res.status(400).json({ message: "Token ID already exists" });
+        }
+        
+        // Now parse with Zod for full validation
+        const spaceData = insertLogisticsSpaceSchema.parse(req.body);
+        
+        console.log("Validated space data:", JSON.stringify(spaceData, null, 2));
+        const space = await storage.createLogisticsSpace(spaceData);
+        console.log("Space created successfully:", space.id);
+        return res.status(201).json(space);
+      } catch (zodError) {
+        if (zodError instanceof ZodError) {
+          console.error("Validation error when creating space:", zodError.errors);
+          const validationError = fromZodError(zodError);
+          return res.status(400).json({ 
+            message: validationError.message,
+            details: zodError.errors
+          });
+        }
+        throw zodError; // Re-throw if not a ZodError
       }
-      
-      const space = await storage.createLogisticsSpace(spaceData);
-      return res.status(201).json(space);
     } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
       console.error("Create space error:", error);
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ 
+        message: "Server error while creating logistics space",
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
   

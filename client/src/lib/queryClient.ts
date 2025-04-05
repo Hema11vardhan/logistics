@@ -2,8 +2,41 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    try {
+      const contentType = res.headers.get("content-type");
+      let errorMessage = `${res.status}: ${res.statusText}`;
+      
+      if (contentType && contentType.includes("application/json")) {
+        // Try to parse as JSON first
+        const clone = res.clone(); // Clone to avoid consuming the body
+        try {
+          const errorData = await clone.json();
+          console.error("Server error response (JSON):", errorData);
+          if (errorData.message) {
+            errorMessage = `${res.status}: ${errorData.message}`;
+          }
+          if (errorData.details) {
+            errorMessage += ` - Details: ${JSON.stringify(errorData.details)}`;
+          }
+        } catch (e) {
+          console.error("Failed to parse JSON error response, falling back to text", e);
+          const text = await res.text();
+          errorMessage = `${res.status}: ${text || res.statusText}`;
+        }
+      } else {
+        // Not JSON, just get text
+        const text = await res.text();
+        errorMessage = `${res.status}: ${text || res.statusText}`;
+      }
+      
+      console.error("API Error:", errorMessage);
+      throw new Error(errorMessage);
+    } catch (e) {
+      if (e instanceof Error) {
+        throw e; // Re-throw if already an Error
+      }
+      throw new Error(`${res.status}: Unknown error`);
+    }
   }
 }
 

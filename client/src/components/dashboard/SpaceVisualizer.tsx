@@ -63,7 +63,7 @@ export default function SpaceVisualizer() {
       const calculatedPrice = numericMaxWeight * 0.05;
       
       // Save the space to our backend
-      await apiRequest("POST", "/api/spaces", {
+      const requestData = {
         tokenId,
         userId: user.id,
         source,
@@ -76,6 +76,13 @@ export default function SpaceVisualizer() {
         status: "available",
         departureDate: new Date(Date.now() + 86400000).toISOString(), // tomorrow as ISO string
         price: calculatedPrice
+      };
+      
+      console.log("Sending space data to backend:", requestData);
+      
+      await apiRequest("/api/spaces", { 
+        method: "POST", 
+        data: requestData 
       });
       
       // Invalidate spaces query to refresh the TokenizedSpaces component
@@ -88,9 +95,21 @@ export default function SpaceVisualizer() {
       });
     } catch (error) {
       console.error("Error tokenizing space:", error);
+      
+      // More detailed error logging
+      if (error instanceof Response) {
+        try {
+          error.text().then(text => {
+            console.error("Server response:", text);
+          });
+        } catch (e) {
+          console.error("Could not extract response text:", e);
+        }
+      }
+      
       toast({
         title: "Tokenization Failed",
-        description: "Failed to tokenize space. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to tokenize space. Please try again.",
         variant: "destructive"
       });
     } finally {

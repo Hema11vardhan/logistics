@@ -21,7 +21,21 @@ export default function TokenizedSpaces() {
     refetch
   } = useQuery<LogisticsSpace[]>({
     queryKey: ["/api/spaces", user?.id],
-    enabled: !!user,
+    queryFn: async ({ queryKey }) => {
+      if (!user?.id) throw new Error("User ID is required");
+      console.log("Fetching spaces for user:", user.id);
+      const res = await fetch(`/api/spaces?userId=${user.id}`);
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Error fetching spaces: ${text}`);
+      }
+      
+      const data = await res.json();
+      console.log("Received spaces data:", data);
+      return data || [];
+    },
+    enabled: !!user?.id,
     refetchInterval: 5000, // Refetch every 5 seconds to ensure new tokenized spaces appear
   });
   
