@@ -192,11 +192,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         // Check if user exists with this email
-        const response = await apiRequest('/api/auth/login', { 
+        const userData = await apiRequest('/api/auth/login', { 
           method: 'POST',
           data: { email: result.user.email }
         });
-        const userData = await response.json();
         
         console.log("User found in our system:", userData.username);
         
@@ -264,17 +263,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             role: validatedRole,
           };
           
-          const registerResult = await register(registerData);
-          
-          if (registerResult) {
-            toast({
-              title: "Registration Successful",
-              description: `Your account has been created with the ${validatedRole} role.`,
-              variant: "default"
-            });
+          try {
+            const registerResult = await register(registerData);
+            
+            if (registerResult) {
+              toast({
+                title: "Registration Successful",
+                description: `Your account has been created with the ${validatedRole} role.`,
+                variant: "default"
+              });
+            }
+            
+            return registerResult;
+          } catch (registerError: any) {
+            // Check if the error is because the user already exists
+            if (registerError.message && registerError.message.includes("already exists")) {
+              // Try login again - the user might have been created by another process
+              try {
+                const userData = await apiRequest('/api/auth/login', { 
+                  method: 'POST',
+                  data: { email: result.user.email }
+                });
+                
+                console.log("User found after failed registration - using existing account");
+                
+                setUser(userData);
+                localStorage.setItem('user', JSON.stringify(userData));
+                
+                toast({
+                  title: "Login successful",
+                  description: `Welcome back, ${userData.firstName || userData.username}!`,
+                  variant: "default"
+                });
+                
+                // Redirect to appropriate dashboard based on role
+                if (userData.role === 'user') {
+                  navigate('/user-dashboard');
+                } else if (userData.role === 'logistics') {
+                  navigate('/logistics-dashboard');
+                } else if (userData.role === 'developer') {
+                  navigate('/developer-dashboard');
+                }
+                
+                return true;
+              } catch (retryLoginErr) {
+                throw registerError; // Re-throw the original error if retrying login fails
+              }
+            } else {
+              throw registerError;
+            }
           }
-          
-          return registerResult;
         } else {
           // User doesn't want to auto-register, redirect to sign-up page with pre-filled data
           toast({
@@ -342,7 +380,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Try to login with wallet address
       try {
-        const response = await apiRequest('/api/auth/login', { 
+        const userData = await apiRequest('/api/auth/login', { 
           method: 'POST',
           data: {
             walletAddress,
@@ -350,8 +388,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             signedMessage: message
           }
         });
-        
-        const userData = await response.json();
         
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
@@ -451,11 +487,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await apiRequest('/api/auth/register', {
+      // Check if user already exists first
+      try {
+        const checkResponse = await apiRequest('/api/auth/login', { 
+          method: 'POST',
+          data: { email: userData.email }
+        });
+        
+        // If we get here, the user already exists, so just log them in
+        console.log("User already exists with this email, logging in instead of registering");
+        
+        setUser(checkResponse);
+        localStorage.setItem('user', JSON.stringify(checkResponse));
+        
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${checkResponse.firstName || checkResponse.username}!`,
+          variant: "default"
+        });
+        
+        // Redirect to appropriate dashboard based on role
+        if (checkResponse.role === 'user') {
+          navigate('/user-dashboard');
+        } else if (checkResponse.role === 'logistics') {
+          navigate('/logistics-dashboard');
+        } else if (checkResponse.role === 'developer') {
+          navigate('/developer-dashboard');
+        }
+        
+        return true;
+      } catch (checkErr) {
+        // User doesn't exist, proceed with registration
+        console.log("User doesn't exist, proceeding with registration");
+      }
+      
+      // Perform the registration
+      const newUser = await apiRequest('/api/auth/register', {
         method: 'POST',
         data: userData
       });
-      const newUser = await response.json();
       
       setUser(newUser);
       localStorage.setItem('user', JSON.stringify(newUser));
