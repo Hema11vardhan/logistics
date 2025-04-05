@@ -81,35 +81,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
       console.log("Firebase auth state changed:", firebaseUser?.email || "logged out");
       
+      // Only attempt auto-login if we have a Firebase user
       if (firebaseUser && firebaseUser.email) {
-        try {
-          // If we got a Firebase user but no local user, try to log them in
-          if (!user) {
-            console.log("Firebase user detected, attempting login with email:", firebaseUser.email);
+        // Check if we need to auto-login this user
+        const storedUser = localStorage.getItem('user');
+        const currentUser = storedUser ? JSON.parse(storedUser) : null;
+        
+        // If no user is logged in locally, try to log them in automatically
+        if (!currentUser) {
+          console.log("Firebase user detected, attempting login with email:", firebaseUser.email);
+          
+          try {
+            // Try to authenticate the user on our system
+            const response = await apiRequest('/api/auth/login', { 
+              method: 'POST',
+              data: { email: firebaseUser.email }
+            });
+            const userData = await response.json();
             
-            try {
-              // Try to authenticate the user on our system
-              const response = await apiRequest('/api/auth/login', { 
-                method: 'POST',
-                data: { email: firebaseUser.email }
-              });
-              const userData = await response.json();
-              
-              console.log("Successfully logged in user after Firebase auth state change");
-              
-              // Update state and local storage
-              setUser(userData);
-              localStorage.setItem('user', JSON.stringify(userData));
-              
-              // No need to navigate - this could happen after redirect and we don't want
-              // to interrupt an ongoing flow
-            } catch (err) {
-              // User not found in our system
-              console.log("Firebase user not found in our system after auth state change");
-            }
+            console.log("Successfully logged in user after Firebase auth state change");
+            
+            // Update state and local storage
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // No need to navigate - this could happen after redirect and we don't want
+            // to interrupt an ongoing flow
+          } catch (err) {
+            // User not found in our system
+            console.log("Firebase user not found in our system after auth state change");
           }
-        } catch (err) {
-          console.error("Error handling Firebase auth state change:", err);
         }
       }
     });
@@ -491,29 +492,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Logout
   const logout = async () => {
-    // Clear user data from state and local storage
-    setUser(null);
-    localStorage.removeItem('user');
-    
-    // Sign out from Firebase (if using Google authentication)
+    // First, sign out from Firebase (if using Google authentication)
     try {
+      console.log("Signing out from Firebase...");
       const firebaseResult = await signOutFromFirebase();
       if (!firebaseResult.success) {
         console.error("Error signing out from Firebase:", firebaseResult.error);
+      } else {
+        console.log("Firebase signout successful");
       }
     } catch (err) {
       console.error("Failed to sign out from Firebase:", err);
     }
     
-    // Redirect to login page
-    navigate('/login');
+    // Clear MetaMask connection if connected
+    try {
+      if (window.ethereum) {
+        console.log("Clearing MetaMask connection state");
+        // There's no direct disconnect method in MetaMask, but we can clear our local state
+      }
+    } catch (err) {
+      console.error("Error clearing wallet connection:", err);
+    }
+
+    // Clear user data from state and local storage
+    console.log("Clearing local user data...");
+    setUser(null);
+    localStorage.removeItem('user');
     
-    // Display toast message
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-      variant: "default"
-    });
+    // Give Firebase auth state change time to propagate
+    // This prevents the immediate auto-login that might happen
+    // when Firebase auth state is still in memory
+    setTimeout(() => {
+      // Redirect to login page
+      navigate('/login');
+      
+      // Display toast message
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+        variant: "default"
+      });
+    }, 100);
   };
 
   // The provider value

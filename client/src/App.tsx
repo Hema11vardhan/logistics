@@ -31,11 +31,9 @@ function AuthRedirectHandler({ children }: { children: React.ReactNode }) {
             hasToken: !!result.token
           });
           
-          // Now we need to check if this user exists in our system
-          // The actual login logic is handled in the useAuth hook's useEffect
-          // which will be triggered when the redirect completes.
-          
-          // No need to do anything here as the AuthProvider will handle the rest
+          // The AuthProvider's auth state change listener will handle the actual login process
+          // This happens automatically because Firebase's auth state will change
+          // which will trigger our subscribeToAuthChanges callback
         } else if (!result.success) {
           console.log("No redirect result or auth in progress:", result.error);
         }
@@ -46,6 +44,24 @@ function AuthRedirectHandler({ children }: { children: React.ReactNode }) {
     
     // Check for redirects immediately when component mounts
     checkRedirectResult();
+    
+    // We will also check again whenever the page becomes visible,
+    // which helps with cases where a user might have logged out and logged
+    // back in with the same account
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("Page became visible, checking for auth redirects...");
+        checkRedirectResult();
+      }
+    };
+    
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Clean up listener
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
   
   return <>{children}</>;
