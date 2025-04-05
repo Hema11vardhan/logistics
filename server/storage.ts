@@ -198,6 +198,10 @@ export class MemStorage implements IStorage {
         eventType: "order_confirmed",
         timestamp: new Date(now.getTime() - 86400000), // 1 day ago
         location: "New York, NY",
+        latitude: 40.7128,
+        longitude: -74.0060,
+        status: "processing",
+        message: "Order has been confirmed",
         details: "Order has been confirmed and payment received."
       });
       
@@ -207,16 +211,50 @@ export class MemStorage implements IStorage {
         eventType: "package_received",
         timestamp: new Date(now.getTime() - 72000000), // 20 hours ago
         location: "New York Distribution Center, NY",
+        latitude: 40.7615,
+        longitude: -73.9223,
+        status: "processing",
+        message: "Package received at distribution center",
         details: "Package has been received at our distribution center."
       });
       
-      // In transit event
+      // In transit event 1
+      await this.createTrackingEvent({
+        shipmentId,
+        eventType: "in_transit",
+        timestamp: new Date(now.getTime() - 58000000), // 16 hours ago
+        location: "Newark, NJ",
+        latitude: 40.7357,
+        longitude: -74.1724,
+        status: "in transit",
+        message: "Departed from Newark",
+        details: "Shipment has left the Newark facility and is on the way."
+      });
+      
+      // In transit event 2
       await this.createTrackingEvent({
         shipmentId,
         eventType: "in_transit",
         timestamp: new Date(now.getTime() - 43200000), // 12 hours ago
         location: "Interstate I-80 W, PA",
+        latitude: 41.0938,
+        longitude: -75.3277,
+        status: "in transit",
+        message: "In transit on I-80",
         details: "Shipment is in transit to destination."
+      });
+      
+      // Current location
+      await this.createTrackingEvent({
+        shipmentId,
+        eventType: "checkpoint",
+        timestamp: new Date(now.getTime() - 21600000), // 6 hours ago
+        location: "Cleveland, OH",
+        latitude: 41.4993,
+        longitude: -81.6944,
+        status: "in transit",
+        message: "Passed through Cleveland checkpoint",
+        details: "Shipment passed through Cleveland checkpoint on time."
       });
       
       // Update shipment status to in_transit

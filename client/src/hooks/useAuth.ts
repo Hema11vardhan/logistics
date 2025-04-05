@@ -89,8 +89,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             try {
               // Try to authenticate the user on our system
-              const response = await apiRequest('POST', '/api/auth/login', { 
-                email: firebaseUser.email 
+              const response = await apiRequest('/api/auth/login', { 
+                method: 'POST',
+                data: { email: firebaseUser.email }
               });
               const userData = await response.json();
               
@@ -125,7 +126,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await apiRequest('POST', '/api/auth/login', { username, password });
+      const response = await apiRequest('/api/auth/login', { 
+        method: 'POST',
+        data: { username, password }
+      });
       const userData = await response.json();
       
       setUser(userData);
@@ -187,7 +191,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       try {
         // Check if user exists with this email
-        const response = await apiRequest('POST', '/api/auth/login', { email: result.user.email });
+        const response = await apiRequest('/api/auth/login', { 
+          method: 'POST',
+          data: { email: result.user.email }
+        });
         const userData = await response.json();
         
         console.log("User found in our system:", userData.username);
@@ -334,10 +341,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Try to login with wallet address
       try {
-        const response = await apiRequest('POST', '/api/auth/login', { 
-          walletAddress,
-          walletSignature: signature,
-          signedMessage: message
+        const response = await apiRequest('/api/auth/login', { 
+          method: 'POST',
+          data: {
+            walletAddress,
+            walletSignature: signature,
+            signedMessage: message
+          }
         });
         
         const userData = await response.json();
@@ -440,7 +450,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await apiRequest('POST', '/api/auth/register', userData);
+      const response = await apiRequest('/api/auth/register', {
+        method: 'POST',
+        data: userData
+      });
       const newUser = await response.json();
       
       setUser(newUser);

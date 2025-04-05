@@ -107,12 +107,24 @@ export const trackingEvents = pgTable("tracking_events", {
   shipmentId: integer("shipment_id").notNull(),
   eventType: text("event_type").notNull(), // pickup, in_transit, delivered, etc.
   location: text("location"),
+  latitude: real("latitude").default(0),
+  longitude: real("longitude").default(0),
+  status: text("status").default("update"),
+  message: text("message"),
   timestamp: timestamp("timestamp").defaultNow(),
   details: text("details"),
 });
 
 export const insertTrackingEventSchema = createInsertSchema(trackingEvents).omit({
   id: true,
+}).extend({
+  // Allow timestamp to be either a Date object or an ISO string
+  timestamp: z.string().or(z.date()).transform((val) => {
+    if (typeof val === 'string') {
+      return new Date(val);
+    }
+    return val;
+  }),
 });
 
 // TYPE EXPORTS
