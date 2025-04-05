@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -19,6 +19,11 @@ export default function LogisticsDashboard() {
   const [, navigate] = useLocation();
   const params = useParams();
   const section = params.section || "";
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -53,7 +58,7 @@ export default function LogisticsDashboard() {
       <Header />
 
       <div className="flex-grow flex">
-        <Sidebar />
+        <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
 
         <main className="flex-1 overflow-y-auto bg-gray-100 p-8">
           <div className="max-w-6xl mx-auto">

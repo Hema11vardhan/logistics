@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useWeb3 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
+import { signInWithGoogle, handleRedirectResult } from '@/lib/firebase';
 
 interface User {
   id: number;
@@ -112,25 +113,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Login with Google (simplified for demo)
+  // Login with Google
   const loginWithGoogle = async (): Promise<boolean> => {
     setLoading(true);
     setError(null);
 
     try {
-      // In a real app, this would redirect to Google OAuth
-      // For demo purposes, we'll just simulate a successful login
-      toast({
-        title: "Google Login",
-        description: "Google login is not implemented in this demo.",
-        variant: "default"
-      });
-      return false;
+      // Use Firebase Google authentication
+      const result = await signInWithGoogle();
+      
+      if (!result.success || !result.user?.email) {
+        throw new Error(result.error || 'Failed to authenticate with Google');
+      }
+      
+      try {
+        // Check if user exists with this email
+        const response = await apiRequest('POST', '/api/auth/login', { email: result.user.email });
+        const userData = await response.json();
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Redirect to appropriate dashboard based on role
+        if (userData.role === 'user') {
+          navigate('/user-dashboard');
+        } else if (userData.role === 'logistics') {
+          navigate('/logistics-dashboard');
+        } else if (userData.role === 'developer') {
+          navigate('/developer-dashboard');
+        }
+        
+        toast({
+          title: "Google Login Successful",
+          description: `Welcome back, ${userData.firstName || userData.username}!`,
+          variant: "default"
+        });
+        
+        return true;
+      } catch (loginErr) {
+        // User not found, ask if they want to register
+        toast({
+          title: "Account not found",
+          description: "Please register first with this Google account.",
+          variant: "default"
+        });
+        
+        // Pre-fill registration form with Google data
+        // For now, we'll just redirect to registration page
+        navigate('/login?tab=signup&email=' + encodeURIComponent(result.user.email || '') + 
+                 '&name=' + encodeURIComponent(result.user.displayName || ''));
+        
+        return false;
+      }
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to login with Google';
       setError(errorMessage);
       toast({
-        title: "Login failed",
+        title: "Google Login Failed",
         description: errorMessage,
         variant: "destructive"
       });
@@ -147,19 +186,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       // Connect MetaMask
-      await connectWallet();
+      const result = await connectWallet();
       
-      if (!account) {
+      if (!result || !result.accounts || result.accounts.length === 0) {
         throw new Error('Failed to connect to MetaMask');
+      }
+      
+      const walletAddress = result.accounts[0];
+      
+      // Have user sign a message to verify wallet ownership
+      const message = `Sign this message to verify your wallet ownership: ${Date.now()}`;
+      let signature;
+      
+      try {
+        if (window.ethereum) {
+          signature = await window.ethereum.request({
+            method: 'personal_sign',
+            params: [message, walletAddress]
+          });
+        } else {
+          throw new Error('MetaMask extension not detected');
+        }
+      } catch (signError: any) {
+        throw new Error(`Failed to sign message: ${signError.message}`);
+      }
+      
+      if (!signature) {
+        throw new Error('Wallet verification failed: No signature provided');
       }
       
       // Try to login with wallet address
       try {
-        const response = await apiRequest('POST', '/api/auth/login', { walletAddress: account });
+        const response = await apiRequest('POST', '/api/auth/login', { 
+          walletAddress,
+          walletSignature: signature,
+          signedMessage: message
+        });
+        
         const userData = await response.json();
         
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
+        
+        toast({
+          title: "MetaMask Login Successful",
+          description: `Wallet verified successfully. Welcome back!`,
+          variant: "default"
+        });
         
         // Redirect to appropriate dashboard based on role
         if (userData.role === 'user') {
@@ -177,6 +250,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "This wallet is not registered. Please sign up first.",
           variant: "default"
         });
+        
+        // Pre-fill registration form with wallet address
+        navigate('/login?tab=signup&walletAddress=' + encodeURIComponent(walletAddress));
+        
         return false;
       }
     } catch (err: any) {

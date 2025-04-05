@@ -87,7 +87,7 @@ export function useWeb3() {
   const [error, setError] = useState<string | null>(null);
 
   // Function to connect wallet
-  const connectWallet = useCallback(async () => {
+  const connectWallet = useCallback(async (): Promise<{ accounts: string[], networkId: number } | null> => {
     setLoading(true);
     setError(null);
     
@@ -98,12 +98,15 @@ export function useWeb3() {
         setIsConnected(true);
         setAccount(result.accounts[0]);
         setNetworkId(result.networkId);
+        return result;
       } else {
         setError('Failed to connect wallet');
+        return null;
       }
     } catch (err) {
       setError('Error connecting to wallet');
       console.error(err);
+      return null;
     } finally {
       setLoading(false);
     }

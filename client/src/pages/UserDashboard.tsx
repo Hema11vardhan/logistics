@@ -26,12 +26,17 @@ export default function UserDashboard() {
   const params = useParams();
   const section = params.section || "";
   const { toast } = useToast();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [searchData, setSearchData] = useState<SearchData | null>(null);
   const [selectedSpace, setSelectedSpace] = useState<LogisticsSpace | null>(null);
   const [customizationData, setCustomizationData] = useState<CustomizationData | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<any | null>(null);
+  
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
   
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -132,7 +137,7 @@ export default function UserDashboard() {
       <Header />
 
       <div className="flex-grow flex">
-        <Sidebar />
+        <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
 
         <main className="flex-1 overflow-y-auto bg-gray-100 p-8">
           <div className="max-w-6xl mx-auto">
