@@ -27,13 +27,8 @@ export default function LiveTracking({ shipmentId }: LiveTrackingProps) {
   const [activeTab, setActiveTab] = useState<string>("map");
 
   // Fetch user's shipments
-  const { data: shipments, isLoading: shipmentsLoading, refetch: refetchShipments } = useQuery<ShipmentWithDetails[]>({
-    queryKey: ['/api/shipments', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const data = await apiRequest(`/api/shipments?userId=${user.id}`);
-      return data;
-    },
+  const { data: shipments, isLoading: shipmentsLoading } = useQuery<ShipmentWithDetails[]>({
+    queryKey: [user ? `/api/shipments?userId=${user.id}` : null],
     enabled: !!user && !shipmentId,
   });
 
