@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useWeb3 } from '@/lib/web3';
 import { useToast } from '@/hooks/use-toast';
-import { signInWithGoogle, handleRedirectResult, subscribeToAuthChanges } from '@/lib/firebase';
+import { signInWithGoogle, handleRedirectResult, subscribeToAuthChanges, signOutFromFirebase } from '@/lib/firebase';
 
 interface User {
   id: number;
@@ -23,7 +23,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<boolean>;
   loginWithMetaMask: () => Promise<boolean>;
   register: (userData: RegisterData) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -46,7 +46,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithGoogle: async () => false,
   loginWithMetaMask: async () => false,
   register: async () => false,
-  logout: () => {},
+  logout: async () => Promise.resolve(),
   isAuthenticated: false
 });
 
@@ -477,10 +477,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Logout
-  const logout = () => {
+  const logout = async () => {
+    // Clear user data from state and local storage
     setUser(null);
     localStorage.removeItem('user');
+    
+    // Sign out from Firebase (if using Google authentication)
+    try {
+      const firebaseResult = await signOutFromFirebase();
+      if (!firebaseResult.success) {
+        console.error("Error signing out from Firebase:", firebaseResult.error);
+      }
+    } catch (err) {
+      console.error("Failed to sign out from Firebase:", err);
+    }
+    
+    // Redirect to login page
     navigate('/login');
+    
+    // Display toast message
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out.",
+      variant: "default"
+    });
   };
 
   // The provider value

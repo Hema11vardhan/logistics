@@ -6,17 +6,21 @@ import {
   signInWithRedirect, 
   getRedirectResult, 
   onAuthStateChanged,
+  signOut,
   type User as FirebaseUser,
   type Auth,
 } from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
 
 // Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  authDomain: "logisticx-4dd07.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  storageBucket: "logisticx-4dd07.firebasestorage.app",
+  messagingSenderId: "648334461773",
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: "G-5QRLJYHSTS"
 };
 
 // Log if we have Firebase config loaded
@@ -31,12 +35,22 @@ class FirebaseService {
   private static instance: FirebaseService;
   private app;
   private _auth: Auth;
+  private _analytics;
   private _googleProvider: GoogleAuthProvider;
 
   private constructor() {
     try {
       this.app = initializeApp(firebaseConfig);
       this._auth = getAuth(this.app);
+      
+      // Initialize analytics if browser supports it
+      try {
+        this._analytics = getAnalytics(this.app);
+        console.log("Firebase analytics initialized");
+      } catch (analyticsError) {
+        console.log("Firebase analytics not available in this environment");
+      }
+      
       console.log("Firebase initialized successfully");
       
       this._googleProvider = new GoogleAuthProvider();
@@ -121,6 +135,9 @@ class FirebaseService {
         errorMessage = 'The authentication request was cancelled.';
       } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'This domain is not authorized in Firebase. Please add this domain to the authorized domains list in your Firebase console.';
+        console.error('IMPORTANT: Add this domain to your Firebase authorized domains: ' + window.location.origin);
       }
       
       return {
@@ -163,9 +180,33 @@ class FirebaseService {
     } catch (error: any) {
       console.error("Error handling redirect result:", error);
       
+      // Check for specific errors
+      let errorMessage = error.message;
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'This domain is not authorized in Firebase. Please add this domain to the authorized domains list in your Firebase console.';
+        console.error('IMPORTANT: Add this domain to your Firebase authorized domains: ' + window.location.origin);
+      }
+      
       // Provide more context for the error
       return {
         success: false,
+        error: errorMessage,
+        errorCode: error.code || 'unknown'
+      };
+    }
+  }
+  
+  // Sign out from Firebase
+  public async signOut() {
+    try {
+      await signOut(this._auth);
+      console.log("Successfully signed out from Firebase");
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error signing out from Firebase:", error);
+      return { 
+        success: false, 
         error: error.message,
         errorCode: error.code || 'unknown'
       };
@@ -183,3 +224,4 @@ export const subscribeToAuthChanges = (callback: (user: FirebaseUser | null) => 
   firebaseService.subscribeToAuthChanges(callback);
 export const signInWithGoogle = () => firebaseService.signInWithGoogle();
 export const handleRedirectResult = () => firebaseService.handleRedirectResult();
+export const signOutFromFirebase = () => firebaseService.signOut();
