@@ -6,8 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, Truck, Package, AlertCircle, MapPin, ChevronRight } from "lucide-react";
+import { CheckCircle, Truck, Package, AlertCircle, MapPin, ChevronRight, RefreshCw, Map } from "lucide-react";
 import { TrackingEvent, Shipment } from "@shared/schema";
+import LocationMap from "../maps/LocationMap";
 
 interface LiveTrackingProps {
   shipmentId?: number;
@@ -209,56 +210,156 @@ export default function LiveTracking({ shipmentId }: LiveTrackingProps) {
                     <TabsTrigger value="events">Event Log</TabsTrigger>
                   </TabsList>
                   <TabsContent value="map" className="mt-4">
-                    <div className="h-[400px] bg-gray-200 rounded-md overflow-hidden relative">
-                      {/* This would be a real map in a production app */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                          </svg>
-                          <p className="text-gray-500">Interactive map with live location would appear here</p>
-                          <p className="text-sm text-gray-400 mt-2">
-                            Current Location: {vehicleLocation.lat.toFixed(4)}, {vehicleLocation.lng.toFixed(4)}
-                          </p>
-                        </div>
+                    <div className="relative mb-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Map className="h-5 w-5 text-gray-500" />
+                        <div className="text-sm font-medium">Live Tracking Map</div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-8"
+                          onClick={() => {
+                            // Force refetch tracking data
+                            const queryKey = selectedShipment ? `/api/shipments/${selectedShipment}/tracking` : null;
+                            if (queryKey) {
+                              toast({
+                                title: "Updating location data",
+                                description: "Fetching the latest tracking information",
+                              });
+                            }
+                          }}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                          Refresh
+                        </Button>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Vehicle Status</h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Current Speed:</span>
-                            <span>{vehicleLocation.speed} km/h</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Heading:</span>
-                            <span>{vehicleLocation.heading}° NE</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Last Update:</span>
-                            <span>2 minutes ago</span>
-                          </div>
+                    {trackingLoading ? (
+                      <div className="h-[400px] bg-gray-100 rounded-md flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-solid border-[#8B5CF6] border-r-transparent"></div>
+                          <p className="mt-2 text-sm text-gray-500">Loading tracking data...</p>
                         </div>
                       </div>
-                      
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Estimated Delivery</h4>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Distance Remaining:</span>
-                            <span>245 km</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Est. Arrival Time:</span>
-                            <span>Tomorrow, 10:30 AM</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Weather at Destination:</span>
-                            <span>Cloudy, 15°C</span>
-                          </div>
+                    ) : trackingEvents && trackingEvents.length > 0 ? (
+                      <div className="h-[400px] rounded-md overflow-hidden">
+                        <LocationMap 
+                          locations={trackingEvents.map(event => ({
+                            lat: event.latitude || 0,
+                            lng: event.longitude || 0,
+                            label: event.message || event.eventType,
+                            status: event.status || undefined,
+                            timestamp: event.timestamp ? new Date(event.timestamp) : undefined
+                          }))}
+                          currentLocation={
+                            trackingEvents.length > 0 
+                              ? (() => {
+                                  // Find the most recent event
+                                  const sortedEvents = [...trackingEvents].sort((a, b) => {
+                                    const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                                    const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                                    return dateB - dateA;
+                                  });
+                                  const latest = sortedEvents[0];
+                                  return {
+                                    lat: latest.latitude || 0,
+                                    lng: latest.longitude || 0,
+                                    label: 'Current Location',
+                                    status: latest.status || 'in_transit',
+                                    timestamp: latest.timestamp ? new Date(latest.timestamp) : undefined
+                                  };
+                                })()
+                              : undefined
+                          }
+                          showRoute={true}
+                          zoom={10}
+                          height="400px"
+                          mapType="street"
+                          showTraffic={true}
+                          className="border border-gray-200"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-[400px] bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
+                        <div className="text-center px-4">
+                          <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                          <h4 className="text-gray-800 font-medium mb-2">No tracking data available</h4>
+                          <p className="text-gray-500 text-sm max-w-md">
+                            Tracking information will appear here once your shipment is in transit.
+                            You'll be able to see real-time location updates on the map.
+                          </p>
                         </div>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div className="bg-white border border-gray-200 p-4 rounded-md shadow-sm">
+                        <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                          <Truck className="h-4 w-4 mr-1 text-[#8B5CF6]" />
+                          Vehicle Status
+                        </h4>
+                        {trackingEvents && trackingEvents.length > 0 ? (
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Current Status:</span>
+                              <span className="font-medium">{currentShipment?.status === 'in_transit' ? 'Moving' : 'Stopped'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Last Location:</span>
+                              <span className="font-medium">
+                                {trackingEvents[0]?.location || 'Unknown'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Last Update:</span>
+                              <span className="font-medium">
+                                {trackingEvents[0]?.timestamp 
+                                  ? new Date(trackingEvents[0].timestamp).toLocaleTimeString() 
+                                  : 'Unknown'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-sm text-gray-500">
+                            Vehicle status will appear when tracking begins
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="bg-white border border-gray-200 p-4 rounded-md shadow-sm">
+                        <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                          <MapPin className="h-4 w-4 mr-1 text-[#8B5CF6]" />
+                          Delivery Information
+                        </h4>
+                        {currentShipment ? (
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">From:</span>
+                              <span className="font-medium">{currentShipment.space?.source || 'Unknown origin'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">To:</span>
+                              <span className="font-medium">{currentShipment.space?.destination || 'Unknown destination'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Blockchain ID:</span>
+                              <span className="font-medium text-xs">
+                                {currentShipment.transactionId 
+                                  ? `${currentShipment.transactionId.substring(0, 8)}...` 
+                                  : 'Pending'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-sm text-gray-500">
+                            Delivery information unavailable
+                          </div>
+                        )}
                       </div>
                     </div>
                   </TabsContent>
@@ -285,7 +386,7 @@ export default function LiveTracking({ shipmentId }: LiveTrackingProps) {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{event.eventType}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.location || '-'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {new Date(event.timestamp).toLocaleString()}
+                                  {event.timestamp ? new Date(event.timestamp).toLocaleString() : '-'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{event.details || '-'}</td>
                               </tr>
