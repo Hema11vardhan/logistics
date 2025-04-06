@@ -206,17 +206,6 @@ export default function PaymentGateway({ customizationData, space, onPaymentComp
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
                   </div>
-                  
-                  <div className={`relative border rounded-md px-3 py-2 flex cursor-pointer ${paymentMethod === "card" ? "bg-gray-50 border-[#8B5CF6]" : "hover:bg-gray-50"}`}>
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card" className="ml-3 flex flex-col">
-                      <span className="block text-sm font-medium text-gray-900">Credit/Debit Card</span>
-                      <span className="block text-sm text-gray-500">Pay with Visa, Mastercard, etc.</span>
-                    </Label>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                  </div>
                 </div>
               </RadioGroup>
             </div>
@@ -299,38 +288,7 @@ export default function PaymentGateway({ customizationData, space, onPaymentComp
               </div>
             )}
             
-            {/* Credit Card Payment Form */}
-            {paymentMethod === "card" && (
-              <div className="bg-gray-50 p-4 rounded-md mb-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">Card Payment Details</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="block text-xs text-gray-500 mb-1">Card Number</Label>
-                    <Input type="text" placeholder="0000 0000 0000 0000" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="block text-xs text-gray-500 mb-1">Expiry Date</Label>
-                      <Input type="text" placeholder="MM/YY" />
-                    </div>
-                    <div>
-                      <Label className="block text-xs text-gray-500 mb-1">CVV</Label>
-                      <Input type="text" placeholder="000" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="block text-xs text-gray-500 mb-1">Card Holder Name</Label>
-                    <Input type="text" placeholder="Name on card" />
-                  </div>
-                  <div>
-                    <Label className="block text-xs text-gray-500 mb-1">Amount</Label>
-                    <div className="flex items-center justify-between bg-white border border-gray-300 rounded-md px-3 py-2">
-                      <span className="text-sm">${customizationData.totalCost.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
           
           {/* Order Summary */}

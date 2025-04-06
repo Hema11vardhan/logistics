@@ -15,7 +15,7 @@ window.addEventListener('load', async () => {
 });
 
 createRoot(document.getElementById("root")!).render(
-  <ThemeProvider defaultTheme="light" storageKey="blocklogistics-theme">
+  <ThemeProvider defaultTheme="light" storageKey="logistix-theme">
     <App />
   </ThemeProvider>
 );

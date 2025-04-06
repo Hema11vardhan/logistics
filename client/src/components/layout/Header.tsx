@@ -41,7 +41,7 @@ export default function Header({ minimal = false }: HeaderProps) {
           <Link href={isAuthenticated ? getDashboardRoute() : "/"}>
             <div className="flex items-center cursor-pointer">
               <Package className="h-8 w-8 text-[#8B5CF6]" />
-              <h1 className="ml-2 text-xl font-bold text-gray-900">BlockLogistics</h1>
+              <h1 className="ml-2 text-xl font-bold text-gray-900">Logistix</h1>
             </div>
           </Link>
         </div>
