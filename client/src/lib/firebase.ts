@@ -14,14 +14,23 @@ import { getAnalytics } from "firebase/analytics";
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+
+  apiKey: "AIzaSyDi6mDdrZWTpuLF-_l8EUcT3_t7wCSAM1s",
+
   authDomain: "logisticx-4dd07.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+
+  projectId: "logisticx-4dd07",
+
   storageBucket: "logisticx-4dd07.firebasestorage.app",
+
   messagingSenderId: "648334461773",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+
+  appId: "1:648334461773:web:54f8f718674bdfbb8e0504",
+
   measurementId: "G-5QRLJYHSTS"
+
 };
+
 
 // Log if we have Firebase config loaded
 console.log("Firebase config loaded:", {
